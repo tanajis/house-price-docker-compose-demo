@@ -115,12 +115,6 @@ You can test the data conversion script locally:
 python convert_json_to_csv.py
 ```
 
-### 7. Deactivate Virtual Environment (When Done)
-
-```bash
-deactivate
-```
-
 ---
 ## 🚀 Quick Start (Docker Deployment)
 
