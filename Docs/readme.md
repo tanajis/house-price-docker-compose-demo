@@ -34,8 +34,10 @@ house_prices/
 ├── logs/                        # Airflow task execution logs
 ├── plugins/                     # Custom Airflow plugins
 ├── convert_json_to_csv.py      # Python script to convert data
+├── generate_fernet_key.py      # Script to generate Fernet key dynamically
 ├── docker-compose.yml          # Docker Compose configuration
-├── requirements.txt            # Python dependencies (pandas)
+├── requirements.txt            # Python dependencies (pandas, cryptography)
+├── .env                        # Environment variables (generated)
 ├── .gitignore                  # Git ignore file
 └── Docs/
     └── readme.md               # This file
@@ -46,9 +48,39 @@ house_prices/
 
 ---
 
-## 🚀 Quick Start
+## � Fernet Key Setup
 
-### 1. Start All Services
+**Important Security Note:** This project uses dynamic Fernet key generation for Airflow encryption. The Fernet key is used to encrypt sensitive data like connection passwords and API tokens.
+
+### Why Dynamic Key Generation?
+
+- **Security Best Practice**: Each deployment gets its own unique encryption key
+- **No Hardcoded Keys**: Keys are never committed to version control
+- **Fresh Keys**: New keys are generated each time the setup script runs
+
+### Setup Requirements
+
+Every user who clones this repository must generate their own Fernet key:
+
+1. **Run the key generation script** (required before starting services)
+2. **The `.env` file is gitignored** to prevent key exposure
+3. **Each environment gets a unique key** for proper security isolation
+
+---
+
+## �🚀 Quick Start
+
+### 1. Generate Fernet Key
+
+First, generate a dynamic Fernet key for Airflow encryption:
+
+```bash
+python generate_fernet_key.py
+```
+
+This will create a `.env` file with a randomly generated Fernet key.
+
+### 2. Start All Services
 
 ```bash
 docker-compose up -d
@@ -63,7 +95,7 @@ Docker will:
 ![Docker Desktop Running Containers](Docker%20desktop%20Screenshot.png)
 *Figure 2: Docker Desktop showing all Airflow services running successfully.*
 
-### 2. Access Airflow UI
+### 3. Access Airflow UI
 
 Open your browser and navigate to:
 ```

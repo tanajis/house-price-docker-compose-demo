@@ -10,6 +10,8 @@ x-airflow-common:
   &airflow-common
   image: apache/airflow:2.8.0  #This tells Docker: Pull the official Airflow image version 2.8.0 from Docker Hub. Think of a Docker image like a pre-built OS with software installed. this image already contains:Python Airflow dependencies CLI tools
   # This image already has python ,Airflow ,and all necessary dependencies pre-installed. It’s like starting with a ready-to-use Airflow environment.
+  env_file:
+    - .env
   environment: #These configure Airflow settings.Equivalent to editing airflow.cfg, but done via environment variables.
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor # distributed workers
     # CeleryExecutor means Scheduler -> sends task -> Redis queue -> Worker executes
@@ -26,7 +28,7 @@ x-airflow-common:
 
     # Fernet Key (Encryption) : Used to encrypt sensitive data in Airflow.
     # Sensitive data such as connection passwords,API tokens and credentials etc
-    AIRFLOW__CORE__FERNET_KEY: 'BD12KbG8qdw47LlwIu_F4H2egDoofABQSTC6UWVf0Do='
+    # AIRFLOW__CORE__FERNET_KEY is now loaded from .env file generated dynamically
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true' # Paus dags initially.
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'  # Disable example dags on UI
     AIRFLOW__WEBSERVER__RBAC: 'false'
