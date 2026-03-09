@@ -22,7 +22,6 @@ def main():
         f.write(f'AIRFLOW__CORE__FERNET_KEY={fernet_key}\n')
 
     print(f"Fernet key generated and saved to {env_file_path}")
-    print(f"Key: {fernet_key}")
 
 if __name__ == "__main__":
     main()

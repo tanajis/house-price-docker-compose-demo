@@ -126,7 +126,14 @@ deactivate
 
 **Note:** The Docker deployment runs everything in containers, so the virtual environment setup above is not required for production deployment. The local setup is only needed if you want to test or develop the Python scripts locally.
 
-### 1. Generate Fernet Key
+
+### 1. Activate Virtual Environment
+**Windows:**
+```bash
+venv\Scripts\activate
+```
+
+### 2. Generate Fernet Key
 
 If you haven't already done so in the local setup:
 
@@ -136,7 +143,7 @@ python generate_fernet_key.py
 
 This will create a `.env` file with a randomly generated Fernet key.
 
-### 2. Start All Services
+### 3. Start All Services
 
 ```bash
 docker-compose up -d
@@ -151,7 +158,7 @@ Docker will:
 ![Docker Desktop Running Containers](Docker%20desktop%20Screenshot.png)
 *Figure 2: Docker Desktop showing all Airflow services running successfully.*
 
-### 3. Access Airflow UI
+### 4. Access Airflow UI
 
 Open your browser and navigate to:
 ```
@@ -162,7 +169,7 @@ http://localhost:8080
 - Username: `admin`
 - Password: `admin`
 
-### 3. Trigger the DAG
+### 5. Trigger the DAG
 
 1. In the Airflow UI, find the `house_prices_conversion` DAG
 2. Click the **Play** button to trigger a run
@@ -171,7 +178,7 @@ http://localhost:8080
 ![Airflow UI DAG Completion](Airflow%20completion%20Screenshot.png)
 *Figure 3: Airflow web interface showing successful DAG run with completed tasks.*
 
-### 4. View Results
+### 6. View Results
 
 After the DAG completes successfully:
 - Check the `data/` folder for `house_prices.csv`

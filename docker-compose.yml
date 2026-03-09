@@ -1,5 +1,3 @@
-version: '3.8'  # Version of docker compose file format. Docker Compose no longer requires the version field, and it automatically uses the latest Compose specification.
-
 # x-airflow-common is reusable configuration block (template) used by multiple Airflow 
 #services in docker-compose.
 # Any field starting with x- is ignored by Docker as a service and can be used for reusable configuration.
