@@ -1,0 +1,151 @@
+version: '3.8'  # Version of docker compose file format. Docker Compose no longer requires the version field, and it automatically uses the latest Compose specification.
+
+# x-airflow-common is reusable configuration block (template) used by multiple Airflow 
+#services in docker-compose.
+# Any field starting with x- is ignored by Docker as a service and can be used for reusable configuration.
+# &airflow-common: In YAML, & means "create an anchor".An anchor is like giving a name to a block of 
+# configuration so it can be reused later.
+
+x-airflow-common:
+  &airflow-common
+  image: apache/airflow:2.8.0  #This tells Docker: Pull the official Airflow image version 2.8.0 from Docker Hub. Think of a Docker image like a pre-built OS with software installed. this image already contains:Python Airflow dependencies CLI tools
+  # This image already has python ,Airflow ,and all necessary dependencies pre-installed. It’s like starting with a ready-to-use Airflow environment.
+  environment: #These configure Airflow settings.Equivalent to editing airflow.cfg, but done via environment variables.
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor # distributed workers
+    # CeleryExecutor means Scheduler -> sends task -> Redis queue -> Worker executes
+    
+    # Airflow stores metadata in a database:DAG runs,task status,logs,connections, users.
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    # Celery stores task results running/success/failure in below PostgreSQL.
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    
+    # Redis acts as the message queue between scheduler and workers.
+    #Scheduler -->Redis queue -->Workers pull tasks->Execute DAG tasks
+    # Port 6379 = default Redis port.
+    AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0  # Redis Broker
+
+    # Fernet Key (Encryption) : Used to encrypt sensitive data in Airflow.
+    # Sensitive data such as connection passwords,API tokens and credentials etc
+    AIRFLOW__CORE__FERNET_KEY: 'BD12KbG8qdw47LlwIu_F4H2egDoofABQSTC6UWVf0Do='
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true' # Paus dags initially.
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'  # Disable example dags on UI
+    AIRFLOW__WEBSERVER__RBAC: 'false'
+
+  
+  # Volumes connect your local machine folder → container folder.
+  # local on laptop : inside container
+  # connects means?
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./convert_json_to_csv.py:/opt/airflow/convert_json_to_csv.py # Python script
+    - ./data:/opt/airflow/data
+    - ./requirements.txt:/opt/airflow/requirements.txt:ro
+  
+  # Container User This sets the Linux user ID inside container.
+  # Used to avoid permission issues with volumes.
+
+  user: "50000:0"
+  depends_on:
+    # This ensure sequence Postgres starts first -->Redis starts and the airflow
+    postgres:
+      condition: service_healthy  # means?
+    redis:
+      condition: service_healthy
+
+# Each service = one container
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      # Creates database automatically.
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      # This makes database persistent.Meaning data will not disappear when container restarts.
+      - postgres_db_volume:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready - Docker waits until PostgreSQL is ready.
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    # Redis is used for Celery message queue. Workers pull tasks from Redis.
+    image: redis:7-alpine # Lightweight Redis.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"] # Ensures Redis is alive.
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    restart: always
+
+  airflow-webserver:
+    # http://localhost:8080
+    <<: *airflow-common  # Get common configuration from x-airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"  # Local port to container port mapping
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-scheduler:
+    # Scheduler is the brain of Airflow.It scans DAG files,creates DAG runs,schedules tasks,sends tasks to queue
+    # Flow : DAG → Scheduler → Redis → Worker
+    <<: *airflow-common  # Get common configuration from x-airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-worker:
+    # Workers actually execute tasks.Tasks such as PythonOperator, BashOperator etc
+    # Multiple workers can run in parallel.
+    <<: *airflow-common  # Get common configuration from x-airflow-common
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-triggerer:
+    # This is used for async operators.
+    <<: *airflow-common # Get common configuration from x-airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-init:
+    # Runs only once.Purpose:install requirements,initialize DB,create admin user
+    # as a separate service?
+    # airflow db init : Creates Airflow metadata tables.
+    <<: *airflow-common
+    entrypoint: bash
+    command:
+      - -c
+      - |
+        pip install -r /opt/airflow/requirements.txt
+        airflow db init
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
+
+volumes:
+  postgres_db_volume:
