@@ -17,6 +17,7 @@ This project demonstrates how to set up **Apache Airflow** using **Docker Compos
 ## 🔧 Prerequisites
 
 - **Docker Desktop** installed and running (Windows/Mac/Linux)
+- **Python 3.8+** installed (for local development and Fernet key generation)
 - **Git** (optional, for version control)
 - Basic understanding of Docker, Python, and Airflow concepts
 
@@ -33,6 +34,7 @@ house_prices/
 │   └── house_prices_dag.py     # Airflow DAG definition
 ├── logs/                        # Airflow task execution logs
 ├── plugins/                     # Custom Airflow plugins
+├── venv/                        # Virtual environment (created locally)
 ├── convert_json_to_csv.py      # Python script to convert data
 ├── generate_fernet_key.py      # Script to generate Fernet key dynamically
 ├── docker-compose.yml          # Docker Compose configuration
@@ -67,12 +69,66 @@ Every user who clones this repository must generate their own Fernet key:
 3. **Each environment gets a unique key** for proper security isolation
 
 ---
+## 🐍 Local Development Setup (Optional)
 
-## �🚀 Quick Start
+For local development and testing the Python scripts before running Docker:
+
+### 1. Create Virtual Environment
+
+```bash
+python -m venv venv
+```
+
+### 2. Activate Virtual Environment
+
+**Windows:**
+```bash
+venv\Scripts\activate
+```
+
+**macOS/Linux:**
+```bash
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Generate Fernet Key
+
+```bash
+python generate_fernet_key.py
+```
+
+**Note:** The `convert_json_to_csv.py` script automatically detects whether it's running locally or in a Docker container and uses the appropriate paths:
+- **Local**: Uses `data/house_prices.json`
+- **Container**: Uses `/opt/airflow/data/house_prices.json`
+
+### 7. Test Scripts Locally (Optional)
+
+You can test the data conversion script locally:
+
+```bash
+python convert_json_to_csv.py
+```
+
+### 7. Deactivate Virtual Environment (When Done)
+
+```bash
+deactivate
+```
+
+---
+## 🚀 Quick Start (Docker Deployment)
+
+**Note:** The Docker deployment runs everything in containers, so the virtual environment setup above is not required for production deployment. The local setup is only needed if you want to test or develop the Python scripts locally.
 
 ### 1. Generate Fernet Key
 
-First, generate a dynamic Fernet key for Airflow encryption:
+If you haven't already done so in the local setup:
 
 ```bash
 python generate_fernet_key.py
@@ -204,10 +260,12 @@ Redis: Default port 6379
 - Output: `data/house_prices.csv`
 
 **How the Task Works:**
-1. Script runs inside the Airflow worker container
-2. Reads JSON from `/opt/airflow/data/house_prices.json`
-3. Uses pandas to convert to DataFrame
-4. Writes CSV to `/opt/airflow/data/house_prices.csv`
+1. Script automatically detects environment (local vs container)
+2. Uses appropriate data paths:
+   - **Local**: `data/house_prices.json` → `data/house_prices.csv`
+   - **Container**: `/opt/airflow/data/house_prices.json` → `/opt/airflow/data/house_prices.csv`
+3. Uses pandas to convert JSON to DataFrame
+4. Writes the converted CSV file
 
 ---
 
@@ -269,10 +327,16 @@ docker-compose exec airflow-webserver airflow tasks test house_prices_conversion
 - Wait 60+ seconds for full initialization
 - Check logs: `docker-compose logs airflow-webserver --tail 50`
 
-### "FileNotFoundError: File data/house_prices.json does not exist"
-- **Reason:** The script uses absolute container paths, not relative paths
-- **Solution:** Ensure `data/` folder exists with `house_prices.json` on your local machine
-- Verify volume mounts in `docker-compose.yml`: `./data:/opt/airflow/data`
+### "Failed to build 'pandas' when getting requirements to build wheel"
+- **Reason:** Pandas wheels may not be available for your Python version, causing pip to attempt building from source
+- **Solutions:**
+  - Upgrade pip: `python -m pip install --upgrade pip`
+  - Use compatible pandas version: `pip install "pandas>=2.2.0"`
+  - Install pre-compiled wheels: `pip install --only-binary=all pandas`
+  - For Python 3.13+, ensure you're using pandas 2.2.x or later
+
+### "No matching distribution found for pandas"
+- **Solution:** Check your Python version compatibility. Use `python --version` and ensure requirements match your Python version.
 
 ### Containers Keep Restarting
 - Check logs: `docker-compose logs`
@@ -295,7 +359,8 @@ docker-compose exec airflow-webserver airflow tasks test house_prices_conversion
 
 Managed via `requirements.txt`:
 ```
-pandas==2.0.0
+pandas>=2.2.0
+cryptography>=42.0.0
 ```
 
 Automatically installed during Docker container initialization.
