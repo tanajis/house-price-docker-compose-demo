@@ -41,6 +41,9 @@ house_prices/
     └── readme.md               # This file
 ```
 
+![VS Code Project View](vs%20code%20screenshot.png)
+*Figure 1: VS Code editor showing the project structure and files.*
+
 ---
 
 ## 🚀 Quick Start
@@ -56,6 +59,9 @@ Docker will:
 - Create and start all containers
 - Initialize the Airflow database
 - Create the admin user
+
+![Docker Desktop Running Containers](Docker%20desktop%20Screenshot.png)
+*Figure 2: Docker Desktop showing all Airflow services running successfully.*
 
 ### 2. Access Airflow UI
 
@@ -73,6 +79,9 @@ http://localhost:8080
 1. In the Airflow UI, find the `house_prices_conversion` DAG
 2. Click the **Play** button to trigger a run
 3. Monitor the task execution in real-time
+
+![Airflow UI DAG Completion](Airflow%20completion%20Screenshot.png)
+*Figure 3: Airflow web interface showing successful DAG run with completed tasks.*
 
 ### 4. View Results
 
